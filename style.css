@@ -4,11 +4,11 @@
 
 body {
   margin: 0;
+  height: 100vh;
+  overflow: hidden;
   background: #050505;
   color: white;
   font-family: Arial, sans-serif;
-  height: 100vh;
-  overflow: hidden;
 }
 
 button,
@@ -16,40 +16,48 @@ input {
   font: inherit;
 }
 
+.hidden {
+  display: none !important;
+}
+
+/* Download screen */
+
 .screen {
   position: fixed;
   inset: 0;
+
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 25px;
+
   background: #050505;
+  padding: 20px;
 }
 
-.pulse-logo,
-.logo {
-  font-weight: 900;
-  letter-spacing: 5px;
-}
-
-.pulse-logo {
+.pulseLogo {
   font-size: 52px;
+  font-weight: 900;
+  letter-spacing: 7px;
 }
 
 .screen p {
-  color: #999;
+  color: #888;
   margin-top: 8px;
   margin-bottom: 35px;
 }
 
 #downloadBrainBtn {
-  border: 0;
-  border-radius: 14px;
   padding: 15px 25px;
+
+  border: none;
+  border-radius: 14px;
+
   background: white;
   color: black;
+
   font-weight: bold;
+
   cursor: pointer;
 }
 
@@ -57,57 +65,69 @@ input {
   opacity: 0.5;
 }
 
+#downloadStatus {
+  margin-top: 18px;
+  color: #999;
+  text-align: center;
+}
+
 .progress {
   width: min(400px, 90%);
   height: 8px;
+
+  margin-top: 18px;
+
   background: #222;
-  border-radius: 10px;
+  border-radius: 20px;
+
   overflow: hidden;
-  margin-top: 20px;
 }
 
 #progressBar {
   width: 0%;
   height: 100%;
+
   background: white;
+
   transition: width 0.2s;
 }
 
-#downloadStatus {
-  margin-top: 18px;
-  color: #aaa;
-  text-align: center;
-}
-
-.hidden {
-  display: none !important;
-}
+/* App */
 
 #app {
   height: 100vh;
+
   display: flex;
   flex-direction: column;
 }
 
 header {
   height: 65px;
-  padding: 0 16px;
-  border-bottom: 1px solid #1c1c1c;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
+
+  padding: 0 14px;
+
+  border-bottom: 1px solid #202020;
 }
 
 .logo {
   font-size: 21px;
+  font-weight: 900;
+  letter-spacing: 4px;
 }
 
 #talkButton {
+  padding: 9px 12px;
+
   border: 1px solid #292929;
+  border-radius: 10px;
+
   background: #111;
   color: white;
-  padding: 9px 12px;
-  border-radius: 10px;
+
   cursor: pointer;
 }
 
@@ -116,115 +136,161 @@ header {
   color: black;
 }
 
+/* Chat */
+
 #chat {
   flex: 1;
+
   overflow-y: auto;
+
   padding: 20px;
+
   display: flex;
   flex-direction: column;
-  gap: 13px;
+
+  gap: 12px;
 }
 
 .message {
   max-width: 85%;
+
   padding: 12px 15px;
+
   border-radius: 16px;
+
   line-height: 1.45;
+
   white-space: pre-wrap;
 }
 
-.user {
+.message.user {
   align-self: flex-end;
-  background: #fff;
-  color: #000;
+
+  background: white;
+  color: black;
+
   border-bottom-right-radius: 4px;
 }
 
-.ai {
+.message.ai {
   align-self: flex-start;
+
   background: #171717;
+
   border-bottom-left-radius: 4px;
 }
 
-.controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-  border-top: 1px solid #1c1c1c;
-  background: #070707;
-}
-
-#messageInput {
-  flex: 1;
-  min-width: 0;
-  background: #151515;
-  color: white;
-  border: 1px solid #292929;
-  outline: none;
-  border-radius: 14px;
-  padding: 13px;
-}
-
-.iconButton,
-.sendButton {
-  border: 0;
-  cursor: pointer;
-}
-
-.iconButton {
-  width: 43px;
-  height: 43px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #151515;
-  border-radius: 12px;
-  color: white;
-}
-
-.sendButton {
-  width: 43px;
-  height: 43px;
-  border-radius: 12px;
-  background: white;
-  color: black;
-}
+/* Image */
 
 #imagePreviewContainer {
   position: relative;
+
   margin: 0 15px 10px;
+
   width: fit-content;
 }
 
 #imagePreview {
   max-width: 180px;
   max-height: 180px;
+
   border-radius: 12px;
 }
 
 #removeImage {
   position: absolute;
+
   right: -8px;
   top: -8px;
-  border: 0;
+
+  width: 26px;
+  height: 26px;
+
+  border: none;
+  border-radius: 50%;
+
   background: black;
   color: white;
-  border-radius: 50%;
-  width: 25px;
-  height: 25px;
+
+  cursor: pointer;
+}
+
+/* Controls */
+
+.controls {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 12px;
+
+  border-top: 1px solid #202020;
+
+  background: #070707;
+}
+
+.controlButton,
+.sendButton {
+  width: 43px;
+  height: 43px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 12px;
+
+  cursor: pointer;
+}
+
+.controlButton {
+  background: #151515;
+  color: white;
+}
+
+.sendButton {
+  background: white;
+  color: black;
+}
+
+#messageInput {
+  flex: 1;
+  min-width: 0;
+
+  padding: 13px;
+
+  border: 1px solid #292929;
+  border-radius: 14px;
+
+  outline: none;
+
+  background: #151515;
+  color: white;
+}
+
+#messageInput::placeholder {
+  color: #777;
 }
 
 #status {
-  text-align: center;
-  color: #777;
-  font-size: 12px;
   min-height: 18px;
+
   padding-bottom: 4px;
+
+  text-align: center;
+
+  color: #777;
+
+  font-size: 12px;
 }
 
+/* Mobile */
+
 @media (max-width: 500px) {
-  .pulse-logo {
+
+  .pulseLogo {
     font-size: 42px;
   }
 
@@ -235,4 +301,5 @@ header {
   #talkButton {
     font-size: 12px;
   }
+
 }
