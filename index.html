@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pulse AI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div id="downloadScreen" class="screen">
+    <div class="pulse-logo">PULSE</div>
+    <p>Your AI, on your device.</p>
+
+    <button id="downloadBrainBtn">Download AI Brain</button>
+
+    <div id="downloadStatus"></div>
+    <div class="progress">
+      <div id="progressBar"></div>
+    </div>
+  </div>
+
+  <main id="app" class="hidden">
+
+    <header>
+      <div class="logo">PULSE</div>
+
+      <button id="talkButton" title="Let Pulse talk by itself">
+        🗣️ Talk by Itself
+      </button>
+    </header>
+
+    <section id="chat"></section>
+
+    <div id="imagePreviewContainer" class="hidden">
+      <img id="imagePreview">
+      <button id="removeImage">✕</button>
+    </div>
+
+    <div class="controls">
+
+      <label class="iconButton" title="Send an image">
+        📷
+        <input id="imageInput" type="file" accept="image/*" hidden>
+      </label>
+
+      <button id="micButton" class="iconButton" title="Talk to Pulse">
+        🎤
+      </button>
+
+      <input
+        id="messageInput"
+        type="text"
+        placeholder="Talk to Pulse..."
+        autocomplete="off"
+      >
+
+      <button id="sendButton" class="sendButton">
+        ➤
+      </button>
+
+    </div>
+
+    <div id="status"></div>
+
+  </main>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
