@@ -8,13 +8,17 @@
 </head>
 
 <body>
-  <div id="downloadScreen" class="screen">
-    <div class="pulse-logo">PULSE</div>
-    <p>Your AI, on your device.</p>
 
-    <button id="downloadBrainBtn">Download AI Brain</button>
+  <div id="downloadScreen" class="screen">
+    <div class="pulseLogo">PULSE</div>
+    <p>Your AI assistant</p>
+
+    <button id="downloadBrainBtn">
+      Download AI Brain
+    </button>
 
     <div id="downloadStatus"></div>
+
     <div class="progress">
       <div id="progressBar"></div>
     </div>
@@ -25,7 +29,7 @@
     <header>
       <div class="logo">PULSE</div>
 
-      <button id="talkButton" title="Let Pulse talk by itself">
+      <button id="talkButton">
         🗣️ Talk by Itself
       </button>
     </header>
@@ -34,17 +38,22 @@
 
     <div id="imagePreviewContainer" class="hidden">
       <img id="imagePreview">
-      <button id="removeImage">✕</button>
+      <button id="removeImage">×</button>
     </div>
 
     <div class="controls">
 
-      <label class="iconButton" title="Send an image">
+      <label class="controlButton">
         📷
-        <input id="imageInput" type="file" accept="image/*" hidden>
+        <input
+          id="imageInput"
+          type="file"
+          accept="image/*"
+          hidden
+        >
       </label>
 
-      <button id="micButton" class="iconButton" title="Talk to Pulse">
+      <button id="micButton" class="controlButton">
         🎤
       </button>
 
@@ -66,5 +75,6 @@
   </main>
 
   <script type="module" src="script.js"></script>
+
 </body>
 </html>
