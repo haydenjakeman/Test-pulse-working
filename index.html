@@ -2,95 +2,124 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0,
+                 maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#080808">
   <title>Pulse AI</title>
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-  <div id="downloadScreen" class="screen">
-    <div class="pulseLogo">PULSE</div>
-    <p>Your AI assistant</p>
+  <div class="app">
 
-    <button id="downloadBrainBtn">
-      Download AI Brain
-    </button>
+    <!-- Header -->
+    <header class="topBar">
+      <div>
+        <h1>Pulse</h1>
+        <span id="status">AI offline</span>
+      </div>
 
-    <div id="downloadStatus"></div>
-
-    <div class="progress">
-      <div id="progressBar"></div>
-    </div>
-  </div>
-
-
-  <main id="app" class="hidden">
-
-    <header>
-      <div class="logo">PULSE</div>
-
-      <button id="talkButton">
-        🗣️ Talk by Itself
+      <button id="talkButton" class="smallButton">
+        🔊 Talk
       </button>
     </header>
 
+    <!-- Download screen -->
+    <section id="downloadScreen" class="downloadScreen">
 
-    <!-- CHAT MESSAGES -->
-    <div id="chat"></div>
+      <div class="brainIcon">🧠</div>
 
+      <h2>Download AI Brain</h2>
 
-    <!-- IMAGE PREVIEW -->
-    <div id="imagePreviewContainer" class="hidden">
-      <img id="imagePreview">
-      <button id="removeImage">×</button>
-    </div>
+      <p>
+        Download the small AI model to your device.
+        After downloading, Pulse can run in your browser
+        without an API key.
+      </p>
 
+      <button id="downloadButton" class="mainButton">
+        Download AI Brain
+      </button>
 
-    <!-- CHAT INPUT -->
-    <div class="chatBar">
+      <div id="downloadProgressContainer" class="progressContainer hidden">
+        <div id="downloadProgress" class="progressBar"></div>
+      </div>
 
-      <label class="smallButton">
-        📷
+      <p id="downloadText"></p>
+
+    </section>
+
+    <!-- Main AI screen -->
+    <main id="chatScreen" class="chatScreen hidden">
+
+      <div id="messages" class="messages">
+
+        <div class="message pulseMessage">
+          <div class="messageName">Pulse</div>
+          <div class="messageText">
+            Hey! I'm Pulse. What do you want to talk about?
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Image preview -->
+      <div id="imagePreviewContainer" class="imagePreviewContainer hidden">
+        <img id="imagePreview" alt="Selected image">
+        <button id="removeImageButton">✕</button>
+      </div>
+
+      <!-- IMPORTANT: visible Android-friendly chat bar -->
+      <div class="chatBar">
+
+        <button
+          id="cameraButton"
+          class="chatButton"
+          type="button"
+          aria-label="Camera">
+          📷
+        </button>
+
         <input
           id="imageInput"
           type="file"
           accept="image/*"
+          capture="environment"
           hidden
         >
-      </label>
 
-      <button
-        id="micButton"
-        class="smallButton"
-        type="button"
-      >
-        🎤
-      </button>
+        <button
+          id="micButton"
+          class="chatButton"
+          type="button"
+          aria-label="Microphone">
+          🎤
+        </button>
 
-      <input
-        id="messageInput"
-        type="text"
-        placeholder="Type a message..."
-        autocomplete="off"
-        enterkeyhint="send"
-      >
+        <input
+          id="messageInput"
+          type="text"
+          placeholder="Type a message..."
+          autocomplete="off"
+          autocorrect="on"
+          spellcheck="true"
+          enterkeyhint="send"
+        >
 
-      <button
-        id="sendButton"
-        class="sendButton"
-        type="button"
-      >
-        ➤
-      </button>
+        <button
+          id="sendButton"
+          class="sendButton"
+          type="button">
+          ➤
+        </button>
 
-    </div>
+      </div>
 
+    </main>
 
-    <div id="status"></div>
-
-  </main>
-
+  </div>
 
   <script type="module" src="script.js"></script>
 
