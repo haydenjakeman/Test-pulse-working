@@ -1,687 +1,833 @@
+// ================================
+// PULSE AI - NEW FAST VERSION
+// ================================
+
 import { pipeline, env } from
-"https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+  "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0";
+
+// -------------------------------
+// SETTINGS
+// -------------------------------
+
+const MODEL = "HuggingFaceTB/SmolLM2-360M-Instruct";
 
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-// Small browser-friendly model
-const MODEL =
-    "onnx-community/SmolLM2-135M-ONNX";
-
 let ai = null;
 let loading = false;
-let talking = false;
+let generating = false;
 
-
-// ===============================
+// -------------------------------
 // ELEMENTS
-// ===============================
+// -------------------------------
 
-const downloadButton =
-    document.getElementById("downloadButton");
+const downloadButton = document.getElementById("downloadButton");
+const progressBar = document.getElementById("progressBar");
+const progressText = document.getElementById("progressText");
+const status = document.getElementById("status");
 
-const downloadPanel =
-    document.getElementById("downloadPanel");
+const chat = document.getElementById("chat");
+const input = document.getElementById("messageInput");
+const sendButton = document.getElementById("sendButton");
 
-const progressBar =
-    document.getElementById("progressBar");
+const micButton = document.getElementById("micButton");
+const talkButton = document.getElementById("talkButton");
 
-const progressText =
-    document.getElementById("progressText");
+const imageInput = document.getElementById("imageInput");
+const imagePreview = document.getElementById("imagePreview");
+const imagePreviewWrap = document.getElementById("imagePreviewWrap");
 
-const status =
-    document.getElementById("status");
+// -------------------------------
+// DEVICE
+// -------------------------------
 
-const chat =
-    document.getElementById("chat");
+const hasWebGPU =
+  typeof navigator !== "undefined" &&
+  !!navigator.gpu;
 
-const input =
-    document.getElementById("messageInput");
+const DEVICE = hasWebGPU ? "webgpu" : "wasm";
 
-const form =
-    document.getElementById("chatForm");
+console.log("Pulse device:", DEVICE);
 
-const sendButton =
-    document.getElementById("sendButton");
+// -------------------------------
+// CHAT UI
+// -------------------------------
 
-const micButton =
-    document.getElementById("micButton");
+function addMessage(text, who = "ai") {
+  if (!chat) return;
 
-const talkButton =
-    document.getElementById("talkButton");
+  const message = document.createElement("div");
 
-const imageInput =
-    document.getElementById("imageInput");
+  message.className =
+    who === "user"
+      ? "message userMessage"
+      : "message aiMessage";
 
-const imagePreview =
-    document.getElementById("imagePreview");
+  message.textContent = text;
 
-const imagePreviewWrap =
-    document.getElementById("imagePreviewWrap");
+  chat.appendChild(message);
 
+  chat.scrollTop = chat.scrollHeight;
 
-// ===============================
+  return message;
+}
+
+// -------------------------------
 // STATUS
-// ===============================
+// -------------------------------
 
 function setStatus(text) {
-    if (status) {
-        status.textContent = text;
-    }
+  if (status) {
+    status.textContent = text;
+  }
+
+  console.log(text);
 }
 
+// -------------------------------
+// DOWNLOAD / LOAD AI
+// -------------------------------
 
-// ===============================
-// CHAT MESSAGE
-// ===============================
+async function loadAI() {
 
-function addMessage(name, text, user = false) {
+  if (ai) {
+    return ai;
+  }
 
-    const message =
-        document.createElement("div");
+  if (loading) {
+    return null;
+  }
 
-    message.className =
-        user
-            ? "message user-message"
-            : "message pulse-message";
+  loading = true;
 
-    const title =
-        document.createElement("strong");
-
-    title.textContent = name;
-
-    const body =
-        document.createElement("span");
-
-    body.textContent = text;
-
-    message.appendChild(title);
-    message.appendChild(body);
-
-    chat.appendChild(message);
-
-    chat.scrollTop =
-        chat.scrollHeight;
-}
-
-
-// ===============================
-// DOWNLOAD AI
-// ===============================
-
-async function downloadAI() {
-
-    if (loading) return;
-
-    if (ai) {
-
-        addMessage(
-            "Pulse",
-            "My AI brain is already loaded."
-        );
-
-        return;
-    }
-
-    loading = true;
-
+  if (downloadButton) {
     downloadButton.disabled = true;
+    downloadButton.textContent = "Downloading AI...";
+  }
 
-    downloadButton.textContent =
-        "Downloading...";
+  setStatus(
+    DEVICE === "webgpu"
+      ? "Preparing Pulse with GPU acceleration..."
+      : "Preparing Pulse..."
+  );
 
-    progressText.textContent =
-        "Connecting to AI...";
+  try {
 
-    progressBar.style.width =
-        "1%";
+    ai = await pipeline(
+      "text-generation",
+      MODEL,
+      {
+        device: DEVICE,
 
-    setStatus(
-        "Downloading AI..."
+        // Keep the model relatively small.
+        dtype: "q4",
+
+        progress_callback: (progress) => {
+
+          console.log(progress);
+
+          if (
+            progress &&
+            typeof progress.progress === "number"
+          ) {
+
+            const percent =
+              Math.max(
+                0,
+                Math.min(
+                  100,
+                  Math.round(progress.progress)
+                )
+              );
+
+            if (progressBar) {
+              progressBar.value = percent;
+              progressBar.style.width =
+                percent + "%";
+            }
+
+            if (progressText) {
+              progressText.textContent =
+                percent + "%";
+            }
+
+            setStatus(
+              "Downloading AI: " +
+              percent +
+              "%"
+            );
+          }
+        }
+      }
     );
 
-    try {
+    if (downloadButton) {
+      downloadButton.textContent =
+        "AI Ready ✓";
 
-        console.log(
-            "Pulse: starting model download"
-        );
-
-
-        // Try WebGPU first because it can be
-        // much faster on supported phones.
-
-        let device =
-            "wasm";
-
-        if (
-            "gpu" in navigator
-        ) {
-            device =
-                "webgpu";
-        }
-
-
-        console.log(
-            "Pulse device:",
-            device
-        );
-
-
-        const options = {
-
-            device: device,
-
-            dtype: "q8",
-
-            progress_callback:
-                function(info) {
-
-                    console.log(
-                        "Model download:",
-                        info
-                    );
-
-                    if (
-                        typeof info.progress ===
-                        "number"
-                    ) {
-
-                        const percent =
-                            Math.max(
-                                0,
-                                Math.min(
-                                    100,
-                                    Math.round(
-                                        info.progress
-                                    )
-                                )
-                            );
-
-                        progressBar.style.width =
-                            percent + "%";
-
-                        progressText.textContent =
-                            `Downloading AI... ${percent}%`;
-                    }
-                }
-        };
-
-
-        ai = await pipeline(
-            "text-generation",
-            MODEL,
-            options
-        );
-
-
-        // SUCCESS
-
-        progressBar.style.width =
-            "100%";
-
-        progressText.textContent =
-            "AI brain ready!";
-
-        downloadButton.textContent =
-            "AI Brain Ready";
-
-        setStatus(
-            "AI Ready"
-        );
-
-        addMessage(
-            "Pulse",
-            "I'm ready! My AI brain has loaded."
-        );
-
-
-        setTimeout(
-            function() {
-
-                if (downloadPanel) {
-
-                    downloadPanel.classList.add(
-                        "hidden"
-                    );
-                }
-
-            },
-            1000
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "Pulse AI error:",
-            error
-        );
-
-        ai = null;
-
-        downloadButton.disabled =
-            false;
-
-        downloadButton.textContent =
-            "Try Again";
-
-        progressBar.style.width =
-            "0%";
-
-        progressText.textContent =
-            "The AI couldn't load. Trying the basic browser mode next time.";
-
-        setStatus(
-            "AI failed to load"
-        );
-
-    } finally {
-
-        loading = false;
+      downloadButton.disabled = true;
     }
+
+    if (progressBar) {
+      progressBar.value = 100;
+      progressBar.style.width = "100%";
+    }
+
+    if (progressText) {
+      progressText.textContent = "100%";
+    }
+
+    setStatus(
+      "Pulse is ready!"
+    );
+
+    localStorage.setItem(
+      "pulseAIReady",
+      "true"
+    );
+
+    return ai;
+
+  } catch (error) {
+
+    console.error(
+      "Pulse AI loading error:",
+      error
+    );
+
+    ai = null;
+
+    if (downloadButton) {
+      downloadButton.disabled = false;
+      downloadButton.textContent =
+        "Download AI Brain";
+    }
+
+    setStatus(
+      "AI could not load. Tap Download AI Brain again."
+    );
+
+    return null;
+
+  } finally {
+
+    loading = false;
+  }
 }
 
-
-// ===============================
+// -------------------------------
 // DOWNLOAD BUTTON
-// ===============================
+// -------------------------------
 
 if (downloadButton) {
 
-    downloadButton.addEventListener(
-        "click",
-        downloadAI
-    );
+  downloadButton.addEventListener(
+    "click",
+    async () => {
 
+      await loadAI();
+
+    }
+  );
 }
 
+// -------------------------------
+// GENERATE RESPONSE
+// -------------------------------
 
-// ===============================
-// AI RESPONSE
-// ===============================
+async function generateReply(userText) {
 
-async function generateReply(text) {
+  if (!userText.trim()) {
+    return;
+  }
+
+  if (generating) {
+    return;
+  }
+
+  generating = true;
+
+  try {
 
     if (!ai) {
 
-        await downloadAI();
+      const loaded = await loadAI();
+
+      if (!loaded) {
+        return;
+      }
     }
 
-    if (!ai) {
+    setStatus("Pulse is thinking...");
 
-        return "My AI brain isn't loaded yet.";
-    }
+    const result = await ai(
+      [
+        {
+          role: "system",
+          content:
+            "You are Pulse, a friendly helpful AI assistant. " +
+            "Keep answers concise and natural. " +
+            "Do not repeat the user's question."
+        },
 
+        {
+          role: "user",
+          content: userText
+        }
+      ],
+      {
+        max_new_tokens: 80,
+        temperature: 0.7,
+        do_sample: true
+      }
+    );
 
-    try {
+    let reply = "";
 
-        const prompt =
-            `You are Pulse, a friendly AI assistant.
-Answer the user's message clearly and briefly.
+    if (
+      Array.isArray(result) &&
+      result.length > 0
+    ) {
 
-User: ${text}
-Pulse:`;
+      const generated =
+        result[0].generated_text;
 
+      if (Array.isArray(generated)) {
 
-        const result =
-            await ai(
-                prompt,
-                {
-                    max_new_tokens: 80,
+        const last =
+          generated[generated.length - 1];
 
-                    temperature: 0.7,
+        if (last && last.content) {
+          reply = last.content;
+        }
 
-                    do_sample: true
-                }
-            );
+      } else if (
+        typeof generated === "string"
+      ) {
 
+        reply = generated;
 
-        let reply =
-            result?.[0]?.generated_text || "";
+        // Remove the prompt if the model
+        // returned it again.
+        const marker =
+          userText;
 
-
-        // Remove the prompt from the response
         if (
-            reply.startsWith(prompt)
+          reply.startsWith(marker)
         ) {
 
-            reply =
-                reply.substring(
-                    prompt.length
-                );
+          reply =
+            reply.slice(
+              marker.length
+            );
         }
-
-
-        reply =
-            reply.trim();
-
-
-        if (!reply) {
-
-            return "I'm not sure what to say.";
-        }
-
-
-        return reply;
-
-
-    } catch (error) {
-
-        console.error(
-            "Generation error:",
-            error
-        );
-
-        return "Something went wrong while I was thinking.";
+      }
     }
-}
 
+    reply = reply.trim();
 
-// ===============================
-// SEND MESSAGE
-// ===============================
+    if (!reply) {
+      reply =
+        "I couldn't generate a response.";
+    }
 
-async function sendMessage() {
-
-    const text =
-        input.value.trim();
-
-    if (!text) return;
-
-    input.value = "";
-
-    addMessage(
-        "You",
-        text,
-        true
-    );
-
-    setStatus(
-        "Thinking..."
-    );
-
-    sendButton.disabled =
-        true;
-
-
-    const reply =
-        await generateReply(text);
-
-
-    addMessage(
-        "Pulse",
-        reply
-    );
+    addMessage(reply, "ai");
 
     speak(reply);
 
+    setStatus("Pulse is ready.");
+
+  } catch (error) {
+
+    console.error(
+      "Generation error:",
+      error
+    );
+
+    addMessage(
+      "Something went wrong while I was thinking.",
+      "ai"
+    );
+
     setStatus(
-        "Ready"
+      "Generation error."
     );
 
-    sendButton.disabled =
-        false;
+  } finally {
+
+    generating = false;
+  }
 }
 
+// -------------------------------
+// SEND MESSAGE
+// -------------------------------
 
-// ===============================
-// CHAT FORM
-// ===============================
+async function sendMessage() {
 
-if (form) {
+  if (!input) return;
 
-    form.addEventListener(
-        "submit",
-        function(event) {
+  const text =
+    input.value.trim();
 
-            event.preventDefault();
+  if (!text) return;
 
-            sendMessage();
-        }
-    );
+  addMessage(
+    text,
+    "user"
+  );
+
+  input.value = "";
+
+  await generateReply(text);
 }
 
+// -------------------------------
+// SEND BUTTON
+// -------------------------------
 
-// ===============================
-// SPEECH
-// ===============================
+if (sendButton) {
+
+  sendButton.addEventListener(
+    "click",
+    sendMessage
+  );
+}
+
+// -------------------------------
+// ENTER TO SEND
+// -------------------------------
+
+if (input) {
+
+  input.addEventListener(
+    "keydown",
+    (event) => {
+
+      if (
+        event.key === "Enter" &&
+        !event.shiftKey
+      ) {
+
+        event.preventDefault();
+
+        sendMessage();
+      }
+    }
+  );
+}
+
+// -------------------------------
+// SPEECH OUTPUT
+// -------------------------------
 
 function speak(text) {
 
-    if (
-        !("speechSynthesis" in window)
-    ) {
-        return;
-    }
+  if (
+    !("speechSynthesis" in window)
+  ) {
+    return;
+  }
 
-    window.speechSynthesis.cancel();
+  speechSynthesis.cancel();
 
-    const voice =
-        new SpeechSynthesisUtterance(
-            text
-        );
+  const utterance =
+    new SpeechSynthesisUtterance(text);
 
-    voice.lang =
-        "en-GB";
+  utterance.rate = 1;
+  utterance.pitch = 1;
 
-    voice.rate =
-        1;
-
-    voice.pitch =
-        1;
-
-    window.speechSynthesis.speak(
-        voice
-    );
+  speechSynthesis.speak(
+    utterance
+  );
 }
 
-
-// ===============================
+// -------------------------------
 // MICROPHONE
-// ===============================
+// -------------------------------
+
+let recognition = null;
+
+const SpeechRecognition =
+  window.SpeechRecognition ||
+  window.webkitSpeechRecognition;
+
+if (SpeechRecognition) {
+
+  recognition =
+    new SpeechRecognition();
+
+  recognition.lang = "en-GB";
+
+  recognition.continuous = false;
+
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+
+    setStatus(
+      "Listening..."
+    );
+
+    if (micButton) {
+      micButton.textContent =
+        "🔴";
+    }
+  };
+
+  recognition.onend = () => {
+
+    if (micButton) {
+      micButton.textContent =
+        "🎤";
+    }
+  };
+
+  recognition.onerror = (event) => {
+
+    console.error(
+      "Speech error:",
+      event.error
+    );
+
+    setStatus(
+      "Microphone error."
+    );
+  };
+
+  recognition.onresult = async (event) => {
+
+    const text =
+      event.results[0][0].transcript;
+
+    if (input) {
+      input.value = text;
+    }
+
+    await sendMessage();
+  };
+
+}
+
+// -------------------------------
+// MIC BUTTON
+// -------------------------------
 
 if (micButton) {
 
-    micButton.addEventListener(
-        "click",
-        function() {
+  micButton.addEventListener(
+    "click",
+    () => {
 
-            const Recognition =
-                window.SpeechRecognition ||
-                window.webkitSpeechRecognition;
+      if (!recognition) {
 
-            if (!Recognition) {
+        setStatus(
+          "Voice input isn't supported by this browser."
+        );
 
-                addMessage(
-                    "Pulse",
-                    "Voice input isn't supported here."
-                );
+        return;
+      }
 
-                return;
-            }
+      try {
 
+        recognition.start();
 
-            const recognition =
-                new Recognition();
+      } catch (error) {
 
-            recognition.lang =
-                "en-GB";
-
-            recognition.interimResults =
-                false;
-
-
-            micButton.textContent =
-                "🔴";
-
-            setStatus(
-                "Listening..."
-            );
-
-
-            recognition.onresult =
-                function(event) {
-
-                    input.value =
-                        event.results[0][0]
-                            .transcript;
-
-                    sendMessage();
-                };
-
-
-            recognition.onend =
-                function() {
-
-                    micButton.textContent =
-                        "🎤";
-
-                    setStatus(
-                        "Ready"
-                    );
-                };
-
-
-            recognition.onerror =
-                function() {
-
-                    micButton.textContent =
-                        "🎤";
-
-                    setStatus(
-                        "Ready"
-                    );
-                };
-
-
-            recognition.start();
-
-        }
-    );
+        console.log(error);
+      }
+    }
+  );
 }
 
-
-// ===============================
+// -------------------------------
 // TALK BY ITSELF
-// ===============================
+// -------------------------------
+
+let talkingByItself = false;
+
+const spontaneousMessages = [
+  "Hey, I'm still here.",
+  "I wonder what we should build next.",
+  "That was interesting.",
+  "I'm ready whenever you are.",
+  "What should we do next?"
+];
 
 if (talkButton) {
 
-    talkButton.addEventListener(
-        "click",
-        function() {
+  talkButton.addEventListener(
+    "click",
+    () => {
 
-            talking =
-                !talking;
+      talkingByItself =
+        !talkingByItself;
 
-            if (talking) {
+      if (talkingByItself) {
 
-                talkButton.textContent =
-                    "Stop Talking";
+        talkButton.textContent =
+          "🛑 Stop talking";
 
-                addMessage(
-                    "Pulse",
-                    "I'll occasionally talk by myself."
-                );
+        setStatus(
+          "Talk by itself is ON."
+        );
 
-                spontaneousTalk();
+        startSpontaneousTalk();
 
-            } else {
+      } else {
 
-                talkButton.textContent =
-                    "Talk by Itself";
+        talkButton.textContent =
+          "🗣️ Talk by itself";
 
-                addMessage(
-                    "Pulse",
-                    "Okay, I'll stay quiet."
-                );
-            }
-        }
-    );
+        setStatus(
+          "Talk by itself is OFF."
+        );
+
+        speechSynthesis.cancel();
+      }
+    }
+  );
 }
 
+function startSpontaneousTalk() {
 
-function spontaneousTalk() {
+  if (!talkingByItself) {
+    return;
+  }
 
-    if (!talking) return;
-
-    const thoughts = [
-
-        "Hey, I'm still here.",
-
-        "What should we build next?",
-
-        "I was thinking about the robot.",
-
-        "I'm ready if you want to talk."
-
+  const message =
+    spontaneousMessages[
+      Math.floor(
+        Math.random() *
+        spontaneousMessages.length
+      )
     ];
 
+  addMessage(
+    message,
+    "ai"
+  );
 
-    const thought =
-        thoughts[
-            Math.floor(
-                Math.random() *
-                thoughts.length
-            )
-        ];
+  speak(message);
 
-
-    addMessage(
-        "Pulse",
-        thought
-    );
-
-    speak(thought);
-
-
-    setTimeout(
-        spontaneousTalk,
-        15000 +
-        Math.random() * 30000
-    );
+  setTimeout(
+    startSpontaneousTalk,
+    15000
+  );
 }
 
-
-// ===============================
-// IMAGE
-// ===============================
+// -------------------------------
+// IMAGE PREVIEW
+// -------------------------------
 
 if (imageInput) {
 
-    imageInput.addEventListener(
-        "change",
-        function() {
+  imageInput.addEventListener(
+    "change",
+    () => {
 
-            const file =
-                imageInput.files?.[0];
+      const file =
+        imageInput.files &&
+        imageInput.files[0];
 
-            if (!file) return;
+      if (!file) {
+        return;
+      }
 
-            imagePreview.src =
-                URL.createObjectURL(
-                    file
-                );
+      const url =
+        URL.createObjectURL(file);
 
-            imagePreviewWrap.classList.remove(
-                "hidden"
-            );
+      if (imagePreview) {
 
-            addMessage(
-                "Pulse",
-                "I received the picture. The current model can display images but doesn't understand them yet."
-            );
-        }
-    );
+        imagePreview.src = url;
+
+        imagePreview.style.display =
+          "block";
+      }
+
+      if (imagePreviewWrap) {
+
+        imagePreviewWrap.style.display =
+          "block";
+      }
+
+      setStatus(
+        "Image selected."
+      );
+    }
+  );
 }
 
+// -------------------------------
+// ROBOT COMMANDS
+// -------------------------------
 
-// ===============================
-// START
-// ===============================
+const ROBOT_URL = "";
 
-setStatus("Ready");
+function detectMovement(text) {
+
+  const t =
+    text.toLowerCase();
+
+  if (
+    t.includes("stop") ||
+    t.includes("don't move") ||
+    t.includes("do not move")
+  ) {
+    return "STOP";
+  }
+
+  if (
+    t.includes("forward") ||
+    t.includes("go forward") ||
+    t.includes("move forward")
+  ) {
+    return "FORWARD";
+  }
+
+  if (
+    t.includes("backward") ||
+    t.includes("backwards") ||
+    t.includes("go back")
+  ) {
+    return "BACKWARD";
+  }
+
+  if (
+    t.includes("turn left") ||
+    t.includes("go left")
+  ) {
+    return "LEFT";
+  }
+
+  if (
+    t.includes("turn right") ||
+    t.includes("go right")
+  ) {
+    return "RIGHT";
+  }
+
+  return null;
+}
+
+function getDuration(text) {
+
+  const match =
+    text.match(
+      /(\d+(?:\.\d+)?)\s*(?:second|seconds|sec|secs)/i
+    );
+
+  if (!match) {
+    return 1;
+  }
+
+  return Math.min(
+    Number(match[1]),
+    10
+  );
+}
+
+async function sendRobotCommand(
+  command,
+  duration
+) {
+
+  if (!ROBOT_URL) {
+
+    console.log(
+      "Robot command:",
+      command,
+      "Duration:",
+      duration
+    );
+
+    return;
+  }
+
+  try {
+
+    await fetch(
+      ROBOT_URL + "/robot",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          command,
+          duration
+        })
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Robot connection error:",
+      error
+    );
+  }
+}
+
+// -------------------------------
+// CHECK ROBOT COMMAND
+// -------------------------------
+
+const originalGenerate =
+  generateReply;
+
+generateReply =
+  async function(text) {
+
+    const command =
+      detectMovement(text);
+
+    if (command) {
+
+      const duration =
+        getDuration(text);
+
+      await sendRobotCommand(
+        command,
+        duration
+      );
+
+      addMessage(
+        "Robot command: " +
+        command +
+        " for " +
+        duration +
+        " second" +
+        (duration === 1 ? "" : "s") +
+        ".",
+        "ai"
+      );
+    }
+
+    await originalGenerate(text);
+  };
+
+// -------------------------------
+// STARTUP
+// -------------------------------
+
+setStatus(
+  "Pulse loaded. Download the AI Brain to begin."
+);
+
+if (progressBar) {
+  progressBar.value = 0;
+}
 
 console.log(
-    "PULSE LOADED"
+  "Pulse loaded successfully."
+);
+
+console.log(
+  "WebGPU available:",
+  hasWebGPU
 );
