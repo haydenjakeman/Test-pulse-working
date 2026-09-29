@@ -1,76 +1,128 @@
-import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2";
+// ===============================
+// PULSE AI
+// ===============================
+
+// IMPORTANT:
+// This script is an ES module, so it loads the AI library
+// only after the page itself is working.
+
+import { pipeline, env } from
+"https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2";
 
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 const MODEL = "Xenova/LaMini-T5-61M";
 
-const ROBOT_URL = "";
-
-const chat = document.getElementById("chat");
-const input = document.getElementById("messageInput");
-const form = document.getElementById("chatForm");
-
-const sendButton = document.getElementById("sendButton");
-const micButton = document.getElementById("micButton");
-const talkButton = document.getElementById("talkButton");
-
-const statusText = document.getElementById("status");
-
-const downloadPanel = document.getElementById("downloadPanel");
-const downloadButton = document.getElementById("downloadButton");
-const progressBar = document.getElementById("progressBar");
-const progressText = document.getElementById("progressText");
-
-const imageInput = document.getElementById("imageInput");
-const imagePreviewWrap = document.getElementById("imagePreviewWrap");
-const imagePreview = document.getElementById("imagePreview");
-
 let generator = null;
 let loading = false;
-let talkByItself = false;
 
 
-// ==============================
-// UI
-// ==============================
+// ===============================
+// GET ELEMENTS
+// ===============================
+
+const downloadButton =
+    document.getElementById("downloadButton");
+
+const downloadPanel =
+    document.getElementById("downloadPanel");
+
+const progressBar =
+    document.getElementById("progressBar");
+
+const progressText =
+    document.getElementById("progressText");
+
+const status =
+    document.getElementById("status");
+
+const chat =
+    document.getElementById("chat");
+
+const input =
+    document.getElementById("messageInput");
+
+const form =
+    document.getElementById("chatForm");
+
+const sendButton =
+    document.getElementById("sendButton");
+
+const micButton =
+    document.getElementById("micButton");
+
+const talkButton =
+    document.getElementById("talkButton");
+
+const imageInput =
+    document.getElementById("imageInput");
+
+const imagePreview =
+    document.getElementById("imagePreview");
+
+const imagePreviewWrap =
+    document.getElementById("imagePreviewWrap");
+
+
+// ===============================
+// STATUS
+// ===============================
 
 function setStatus(text) {
-    if (statusText) {
-        statusText.textContent = text;
+
+    if (status) {
+        status.textContent = text;
     }
+
 }
 
 
-function addMessage(name, text, isUser = false) {
+// ===============================
+// MESSAGES
+// ===============================
+
+function addMessage(
+    name,
+    text,
+    user = false
+) {
 
     if (!chat) return;
 
-    const message = document.createElement("div");
+    const message =
+        document.createElement("div");
 
     message.className =
-        isUser
+        user
             ? "message user-message"
             : "message pulse-message";
 
-    const title = document.createElement("strong");
-    title.textContent = name;
+    const title =
+        document.createElement("strong");
 
-    const body = document.createElement("span");
-    body.textContent = text;
+    title.textContent =
+        name;
+
+    const body =
+        document.createElement("span");
+
+    body.textContent =
+        text;
 
     message.appendChild(title);
     message.appendChild(body);
 
     chat.appendChild(message);
 
-    chat.scrollTop = chat.scrollHeight;
+    chat.scrollTop =
+        chat.scrollHeight;
 }
 
 
-// ==============================
-// DOWNLOAD AI
-// ==============================
+// ===============================
+// DOWNLOAD AI BRAIN
+// ===============================
 
 async function downloadAI() {
 
@@ -79,181 +131,179 @@ async function downloadAI() {
     }
 
     if (generator) {
+
         addMessage(
             "Pulse",
             "My AI brain is already downloaded."
         );
+
         return;
     }
 
     loading = true;
 
-    downloadButton.disabled = true;
+    downloadButton.disabled =
+        true;
 
     downloadButton.textContent =
-        "Downloading...";
-
-    progressText.textContent =
-        "Connecting to AI model...";
+        "Starting download...";
 
     progressBar.style.width =
-        "0%";
+        "1%";
+
+    progressText.textContent =
+        "Connecting to the AI model...";
 
     setStatus(
-        "Downloading AI brain..."
+        "Connecting..."
     );
 
     try {
 
-        generator = await pipeline(
-            "text2text-generation",
-            MODEL,
-            {
-
-                progress_callback: (info) => {
-
-                    console.log(
-                        "Download:",
-                        info
-                    );
-
-                    if (
-                        typeof info.progress ===
-                        "number"
-                    ) {
-
-                        let percent =
-                            Math.round(
-                                info.progress
-                            );
-
-                        percent =
-                            Math.max(
-                                0,
-                                Math.min(
-                                    100,
-                                    percent
-                                )
-                            );
-
-                        progressBar.style.width =
-                            percent + "%";
-
-                        progressText.textContent =
-                            `Downloading AI brain... ${percent}%`;
-                    }
-                }
-
-            }
+        console.log(
+            "Starting AI download..."
         );
 
+        generator =
+            await pipeline(
+                "text2text-generation",
+                MODEL,
+                {
+
+                    progress_callback:
+                        function(info) {
+
+                            console.log(
+                                "Download progress:",
+                                info
+                            );
+
+                            if (
+                                typeof info.progress ===
+                                "number"
+                            ) {
+
+                                const percent =
+                                    Math.round(
+                                        info.progress
+                                    );
+
+                                progressBar.style.width =
+                                    percent + "%";
+
+                                progressText.textContent =
+                                    "Downloading AI brain... " +
+                                    percent +
+                                    "%";
+                            }
+
+                        }
+
+                }
+            );
+
+
+        // SUCCESS
 
         progressBar.style.width =
             "100%";
 
         progressText.textContent =
-            "AI brain downloaded successfully!";
+            "AI brain downloaded!";
 
         downloadButton.textContent =
             "AI Brain Ready";
 
         setStatus(
-            "AI ready"
+            "AI Ready"
         );
-
-        setTimeout(() => {
-
-            if (downloadPanel) {
-                downloadPanel.classList.add(
-                    "hidden"
-                );
-            }
-
-        }, 1000);
-
 
         addMessage(
             "Pulse",
-            "My AI brain is ready! You can talk to me now."
+            "My AI brain is ready!"
+        );
+
+        setTimeout(
+            function() {
+
+                downloadPanel.classList.add(
+                    "hidden"
+                );
+
+            },
+            800
         );
 
 
     } catch (error) {
 
         console.error(
-            "AI DOWNLOAD ERROR:",
+            "DOWNLOAD ERROR:",
             error
         );
 
-        generator = null;
+        generator =
+            null;
 
         downloadButton.disabled =
             false;
 
         downloadButton.textContent =
-            "Try Download Again";
+            "Download AI Brain";
 
         progressBar.style.width =
             "0%";
 
         progressText.textContent =
-            "Download failed. Check your internet connection and try again.";
+            "Something stopped the download. Check the browser console for the error.";
 
         setStatus(
-            "Download failed"
+            "Download error"
         );
 
-        addMessage(
-            "Pulse",
-            "I couldn't download my AI brain. Try the button again."
-        );
-
-    } finally {
-
-        loading = false;
     }
+
+    loading =
+        false;
 }
 
 
-// IMPORTANT:
-// Connect the button AFTER the page has loaded.
+// ===============================
+// BUTTON
+// ===============================
 
 if (downloadButton) {
+
+    console.log(
+        "Download button found."
+    );
 
     downloadButton.addEventListener(
         "click",
         downloadAI
     );
 
+} else {
+
+    console.error(
+        "DOWNLOAD BUTTON NOT FOUND!"
+    );
+
 }
 
 
-// ==============================
-// LOAD AI
-// ==============================
-
-async function getAI() {
-
-    if (generator) {
-        return generator;
-    }
-
-    await downloadAI();
-
-    return generator;
-}
-
-
-// ==============================
-// GENERATE RESPONSE
-// ==============================
+// ===============================
+// AI RESPONSE
+// ===============================
 
 async function generateReply(text) {
 
-    const ai =
-        await getAI();
+    if (!generator) {
 
-    if (!ai) {
+        await downloadAI();
+    }
+
+    if (!generator) {
 
         return "My AI brain isn't ready yet.";
     }
@@ -261,7 +311,7 @@ async function generateReply(text) {
     try {
 
         const result =
-            await ai(
+            await generator(
                 text,
                 {
                     max_new_tokens: 80,
@@ -269,18 +319,11 @@ async function generateReply(text) {
                 }
             );
 
-        if (
-            result &&
-            result[0] &&
-            result[0].generated_text
-        ) {
-
-            return result[0]
-                .generated_text
-                .trim();
-        }
-
-        return "I'm not sure what to say.";
+        return (
+            result?.[0]?.generated_text?.trim()
+            ||
+            "I'm not sure what to say."
+        );
 
     } catch (error) {
 
@@ -294,9 +337,9 @@ async function generateReply(text) {
 }
 
 
-// ==============================
+// ===============================
 // SEND MESSAGE
-// ==============================
+// ===============================
 
 async function sendMessage() {
 
@@ -322,38 +365,6 @@ async function sendMessage() {
     sendButton.disabled =
         true;
 
-
-    // Robot commands
-
-    const movement =
-        detectMovement(text);
-
-    if (movement) {
-
-        const duration =
-            getDuration(text);
-
-        await sendRobotCommand(
-            movement,
-            duration
-        );
-
-        addMessage(
-            "Pulse",
-            `Robot command: ${movement} for ${duration} second${duration === 1 ? "" : "s"}.`
-        );
-
-        setStatus("Ready");
-
-        sendButton.disabled =
-            false;
-
-        return;
-    }
-
-
-    // Normal AI
-
     const reply =
         await generateReply(text);
 
@@ -373,9 +384,9 @@ async function sendMessage() {
 }
 
 
-// ==============================
-// FORM / SEND
-// ==============================
+// ===============================
+// CHAT FORM
+// ===============================
 
 if (form) {
 
@@ -389,220 +400,17 @@ if (form) {
 
         }
     );
-
 }
 
 
-// ==============================
-// ROBOT
-// ==============================
-
-function detectMovement(text) {
-
-    const t =
-        text.toLowerCase();
-
-    if (
-        t.includes("stop") ||
-        t.includes("halt")
-    ) {
-        return "STOP";
-    }
-
-    if (
-        t.includes("forward") ||
-        t.includes("go forward")
-    ) {
-        return "FORWARD";
-    }
-
-    if (
-        t.includes("backward") ||
-        t.includes("backwards") ||
-        t.includes("go back")
-    ) {
-        return "BACKWARD";
-    }
-
-    if (
-        t.includes("turn left") ||
-        t.includes("left")
-    ) {
-        return "LEFT";
-    }
-
-    if (
-        t.includes("turn right") ||
-        t.includes("right")
-    ) {
-        return "RIGHT";
-    }
-
-    return null;
-}
-
-
-function getDuration(text) {
-
-    const match =
-        text.match(
-            /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s)\b/i
-        );
-
-    if (!match) {
-        return 1;
-    }
-
-    return Math.min(
-        10,
-        Math.max(
-            0.1,
-            Number(match[1])
-        )
-    );
-}
-
-
-async function sendRobotCommand(
-    command,
-    duration
-) {
-
-    if (!ROBOT_URL) {
-
-        console.log(
-            "Robot command:",
-            command,
-            duration
-        );
-
-        return;
-    }
-
-    try {
-
-        await fetch(
-            ROBOT_URL + "/robot",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body: JSON.stringify({
-                    command,
-                    duration
-                })
-            }
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Robot error:",
-            error
-        );
-    }
-}
-
-
-// ==============================
-// MICROPHONE
-// ==============================
-
-if (micButton) {
-
-    micButton.addEventListener(
-        "click",
-        () => {
-
-            const SpeechRecognition =
-                window.SpeechRecognition ||
-                window.webkitSpeechRecognition;
-
-            if (!SpeechRecognition) {
-
-                addMessage(
-                    "Pulse",
-                    "Voice input isn't supported by this browser."
-                );
-
-                return;
-            }
-
-            const recognition =
-                new SpeechRecognition();
-
-            recognition.lang =
-                "en-GB";
-
-            recognition.interimResults =
-                false;
-
-            recognition.maxAlternatives =
-                1;
-
-            micButton.textContent =
-                "⏺️";
-
-            setStatus(
-                "Listening..."
-            );
-
-
-            recognition.onresult =
-                (event) => {
-
-                    input.value =
-                        event.results[0][0]
-                            .transcript;
-
-                    sendMessage();
-                };
-
-
-            recognition.onerror =
-                () => {
-
-                    micButton.textContent =
-                        "🎤";
-
-                    setStatus(
-                        "Ready"
-                    );
-                };
-
-
-            recognition.onend =
-                () => {
-
-                    micButton.textContent =
-                        "🎤";
-
-                    setStatus(
-                        "Ready"
-                    );
-                };
-
-
-            recognition.start();
-
-        }
-    );
-
-}
-
-
-// ==============================
+// ===============================
 // SPEECH
-// ==============================
+// ===============================
 
 function speak(text) {
 
     if (
-        !("speechSynthesis" in window)
+        !window.speechSynthesis
     ) {
         return;
     }
@@ -620,36 +428,115 @@ function speak(text) {
     speech.rate =
         1;
 
-    speech.pitch =
-        1;
-
     window.speechSynthesis.speak(
         speech
     );
 }
 
 
-// ==============================
+// ===============================
+// MICROPHONE
+// ===============================
+
+if (micButton) {
+
+    micButton.addEventListener(
+        "click",
+        function() {
+
+            const Recognition =
+                window.SpeechRecognition ||
+                window.webkitSpeechRecognition;
+
+            if (!Recognition) {
+
+                addMessage(
+                    "Pulse",
+                    "Your browser doesn't support voice input."
+                );
+
+                return;
+            }
+
+            const recognition =
+                new Recognition();
+
+            recognition.lang =
+                "en-GB";
+
+            recognition.interimResults =
+                false;
+
+            micButton.textContent =
+                "🔴";
+
+            setStatus(
+                "Listening..."
+            );
+
+            recognition.onresult =
+                function(event) {
+
+                    input.value =
+                        event.results[0][0]
+                            .transcript;
+
+                    sendMessage();
+                };
+
+            recognition.onend =
+                function() {
+
+                    micButton.textContent =
+                        "🎤";
+
+                    setStatus(
+                        "Ready"
+                    );
+                };
+
+            recognition.onerror =
+                function() {
+
+                    micButton.textContent =
+                        "🎤";
+
+                    setStatus(
+                        "Ready"
+                    );
+                };
+
+            recognition.start();
+
+        }
+    );
+}
+
+
+// ===============================
 // TALK BY ITSELF
-// ==============================
+// ===============================
+
+let talking =
+    false;
 
 if (talkButton) {
 
     talkButton.addEventListener(
         "click",
-        () => {
+        function() {
 
-            talkByItself =
-                !talkByItself;
+            talking =
+                !talking;
 
-            if (talkByItself) {
+            if (talking) {
 
                 talkButton.textContent =
                     "Stop Talking";
 
                 addMessage(
                     "Pulse",
-                    "I'll occasionally talk by myself."
+                    "I'll talk by myself sometimes."
                 );
 
                 spontaneousTalk();
@@ -661,7 +548,7 @@ if (talkButton) {
 
                 addMessage(
                     "Pulse",
-                    "Okay, I'll stay quiet."
+                    "Okay, I'll be quiet."
                 );
             }
 
@@ -672,60 +559,56 @@ if (talkButton) {
 
 function spontaneousTalk() {
 
-    if (!talkByItself) {
+    if (!talking) {
         return;
     }
 
-    const thoughts = [
+    const things = [
 
         "Hey, I'm still here.",
 
-        "I wonder what we should build next.",
-
-        "That was a quiet moment.",
-
-        "I'm ready if you want to talk.",
+        "What should we build next?",
 
         "I was thinking about the robot.",
 
-        "What should we make next?"
+        "That was quiet.",
+
+        "I'm ready to talk."
+
     ];
 
-    const thought =
-        thoughts[
+    const text =
+        things[
             Math.floor(
                 Math.random() *
-                thoughts.length
+                things.length
             )
         ];
 
     addMessage(
         "Pulse",
-        thought
+        text
     );
 
-    speak(thought);
-
-    const delay =
-        15000 +
-        Math.random() * 30000;
+    speak(text);
 
     setTimeout(
         spontaneousTalk,
-        delay
+        15000 +
+        Math.random() * 30000
     );
 }
 
 
-// ==============================
-// CAMERA / IMAGE
-// ==============================
+// ===============================
+// IMAGE
+// ===============================
 
 if (imageInput) {
 
     imageInput.addEventListener(
         "change",
-        () => {
+        function() {
 
             const file =
                 imageInput.files?.[0];
@@ -734,13 +617,8 @@ if (imageInput) {
                 return;
             }
 
-            const url =
-                URL.createObjectURL(
-                    file
-                );
-
             imagePreview.src =
-                url;
+                URL.createObjectURL(file);
 
             imagePreviewWrap.classList.remove(
                 "hidden"
@@ -748,19 +626,21 @@ if (imageInput) {
 
             addMessage(
                 "Pulse",
-                "I received the picture. This version can display images, but the current small AI model can't understand images yet."
+                "I received your picture. This version can display it, but the small AI model doesn't understand images yet."
             );
         }
     );
 }
 
 
-// ==============================
-// START
-// ==============================
+// ===============================
+// STARTUP
+// ===============================
 
-setStatus("Ready");
+setStatus(
+    "Ready"
+);
 
 console.log(
-    "Pulse loaded successfully."
+    "PULSE SCRIPT LOADED SUCCESSFULLY"
 );
