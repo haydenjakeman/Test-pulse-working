@@ -2,25 +2,35 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
-  height: 100vh;
-  overflow: hidden;
+  width: 100%;
+  height: 100%;
+
   background: #050505;
   color: white;
+
   font-family: Arial, sans-serif;
+}
+
+body {
+  overflow: hidden;
 }
 
 button,
 input {
-  font: inherit;
+  font-family: inherit;
 }
 
 .hidden {
   display: none !important;
 }
 
-/* Download screen */
+
+/* =========================
+   DOWNLOAD SCREEN
+========================= */
 
 .screen {
   position: fixed;
@@ -28,10 +38,12 @@ input {
 
   display: flex;
   flex-direction: column;
+
   justify-content: center;
   align-items: center;
 
   background: #050505;
+
   padding: 20px;
 }
 
@@ -43,6 +55,7 @@ input {
 
 .screen p {
   color: #888;
+
   margin-top: 8px;
   margin-bottom: 35px;
 }
@@ -57,6 +70,7 @@ input {
   color: black;
 
   font-weight: bold;
+  font-size: 16px;
 
   cursor: pointer;
 }
@@ -67,17 +81,21 @@ input {
 
 #downloadStatus {
   margin-top: 18px;
+
   color: #999;
+
   text-align: center;
 }
 
 .progress {
   width: min(400px, 90%);
+
   height: 8px;
 
   margin-top: 18px;
 
   background: #222;
+
   border-radius: 20px;
 
   overflow: hidden;
@@ -92,19 +110,29 @@ input {
   transition: width 0.2s;
 }
 
-/* App */
+
+/* =========================
+   MAIN APP
+========================= */
 
 #app {
+  width: 100%;
   height: 100vh;
 
   display: flex;
   flex-direction: column;
 }
 
+
+/* =========================
+   HEADER
+========================= */
+
 header {
-  height: 65px;
+  flex: 0 0 65px;
 
   display: flex;
+
   align-items: center;
   justify-content: space-between;
 
@@ -115,7 +143,9 @@ header {
 
 .logo {
   font-size: 21px;
+
   font-weight: 900;
+
   letter-spacing: 4px;
 }
 
@@ -123,9 +153,11 @@ header {
   padding: 9px 12px;
 
   border: 1px solid #292929;
+
   border-radius: 10px;
 
   background: #111;
+
   color: white;
 
   cursor: pointer;
@@ -136,10 +168,15 @@ header {
   color: black;
 }
 
-/* Chat */
+
+/* =========================
+   CHAT
+========================= */
 
 #chat {
   flex: 1;
+
+  min-height: 0;
 
   overflow-y: auto;
 
@@ -161,12 +198,15 @@ header {
   line-height: 1.45;
 
   white-space: pre-wrap;
+
+  word-wrap: break-word;
 }
 
 .message.user {
   align-self: flex-end;
 
   background: white;
+
   color: black;
 
   border-bottom-right-radius: 4px;
@@ -177,13 +217,20 @@ header {
 
   background: #171717;
 
+  color: white;
+
   border-bottom-left-radius: 4px;
 }
 
-/* Image */
+
+/* =========================
+   IMAGE
+========================= */
 
 #imagePreviewContainer {
   position: relative;
+
+  flex: 0 0 auto;
 
   margin: 0 15px 10px;
 
@@ -203,22 +250,32 @@ header {
   right: -8px;
   top: -8px;
 
-  width: 26px;
-  height: 26px;
+  width: 27px;
+  height: 27px;
 
   border: none;
+
   border-radius: 50%;
 
   background: black;
+
   color: white;
 
   cursor: pointer;
 }
 
-/* Controls */
 
-.controls {
+/* =========================
+   CHAT INPUT BAR
+========================= */
+
+.chatBar {
+  flex: 0 0 auto;
+
+  width: 100%;
+
   display: flex;
+
   align-items: center;
 
   gap: 8px;
@@ -227,54 +284,107 @@ header {
 
   border-top: 1px solid #202020;
 
-  background: #070707;
+  background: #080808;
 }
 
-.controlButton,
-.sendButton {
-  width: 43px;
-  height: 43px;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border: none;
-  border-radius: 12px;
-
-  cursor: pointer;
-}
-
-.controlButton {
-  background: #151515;
-  color: white;
-}
-
-.sendButton {
-  background: white;
-  color: black;
-}
+/*
+THE ACTUAL TEXT BOX
+*/
 
 #messageInput {
   flex: 1;
+
+  width: 100%;
+
   min-width: 0;
 
-  padding: 13px;
+  height: 46px;
 
-  border: 1px solid #292929;
+  padding: 0 15px;
+
+  border: 1px solid #333;
+
   border-radius: 14px;
 
   outline: none;
 
-  background: #151515;
+  background: #171717;
+
   color: white;
+
+  font-size: 16px;
+}
+
+#messageInput:focus {
+  border-color: #666;
 }
 
 #messageInput::placeholder {
   color: #777;
 }
 
+
+/* Camera + microphone */
+
+.smallButton {
+  flex: 0 0 43px;
+
+  width: 43px;
+  height: 43px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+
+  border-radius: 12px;
+
+  background: #171717;
+
+  color: white;
+
+  font-size: 18px;
+
+  cursor: pointer;
+}
+
+
+/* Send */
+
+.sendButton {
+  flex: 0 0 43px;
+
+  width: 43px;
+  height: 43px;
+
+  border: none;
+
+  border-radius: 12px;
+
+  background: white;
+
+  color: black;
+
+  font-size: 20px;
+
+  cursor: pointer;
+}
+
+.sendButton:active {
+  transform: scale(0.94);
+}
+
+
+/* =========================
+   STATUS
+========================= */
+
 #status {
+  flex: 0 0 auto;
+
   min-height: 18px;
 
   padding-bottom: 4px;
@@ -286,7 +396,10 @@ header {
   font-size: 12px;
 }
 
-/* Mobile */
+
+/* =========================
+   PHONE
+========================= */
 
 @media (max-width: 500px) {
 
@@ -302,4 +415,8 @@ header {
     font-size: 12px;
   }
 
-}
+  #messageInput {
+    font-size: 16px;
+  }
+
+  }
