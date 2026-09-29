@@ -24,6 +24,7 @@
     </div>
   </div>
 
+
   <main id="app" class="hidden">
 
     <header>
@@ -34,16 +35,22 @@
       </button>
     </header>
 
-    <section id="chat"></section>
 
+    <!-- CHAT MESSAGES -->
+    <div id="chat"></div>
+
+
+    <!-- IMAGE PREVIEW -->
     <div id="imagePreviewContainer" class="hidden">
       <img id="imagePreview">
       <button id="removeImage">×</button>
     </div>
 
-    <div class="controls">
 
-      <label class="controlButton">
+    <!-- CHAT INPUT -->
+    <div class="chatBar">
+
+      <label class="smallButton">
         📷
         <input
           id="imageInput"
@@ -53,26 +60,37 @@
         >
       </label>
 
-      <button id="micButton" class="controlButton">
+      <button
+        id="micButton"
+        class="smallButton"
+        type="button"
+      >
         🎤
       </button>
 
       <input
         id="messageInput"
         type="text"
-        placeholder="Talk to Pulse..."
+        placeholder="Type a message..."
         autocomplete="off"
+        enterkeyhint="send"
       >
 
-      <button id="sendButton" class="sendButton">
+      <button
+        id="sendButton"
+        class="sendButton"
+        type="button"
+      >
         ➤
       </button>
 
     </div>
 
+
     <div id="status"></div>
 
   </main>
+
 
   <script type="module" src="script.js"></script>
 
