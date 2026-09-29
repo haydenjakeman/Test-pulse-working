@@ -1,196 +1,316 @@
-import {
-  pipeline,
-  env
-} from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2";
+import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2";
 
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-/*
-==================================================
-PULSE SETTINGS
-==================================================
-*/
-
 const MODEL = "Xenova/LaMini-T5-61M";
 
-/*
-If the Raspberry Pi is connected to Pulse,
-put the Pi's local address here.
-
-Example:
-
-const ROBOT_URL = "http://192.168.1.25:5000";
-
-Leave it empty until the robot is ready.
-*/
-
+// Add your Raspberry Pi address here later.
+// Example:
+// const ROBOT_URL = "http://192.168.1.25:5000";
 const ROBOT_URL = "";
 
-/*
-==================================================
-VARIABLES
-==================================================
-*/
+const chat = document.getElementById("chat");
+const input = document.getElementById("messageInput");
+const form = document.getElementById("chatForm");
+const sendButton = document.getElementById("sendButton");
 
-let ai = null;
+const micButton = document.getElementById("micButton");
+const talkButton = document.getElementById("talkButton");
 
+const statusText = document.getElementById("status");
+
+const downloadPanel = document.getElementById("downloadPanel");
+const downloadButton = document.getElementById("downloadButton");
+const progressBar = document.getElementById("progressBar");
+const progressText = document.getElementById("progressText");
+
+const imageInput = document.getElementById("imageInput");
+const imagePreviewWrap = document.getElementById("imagePreviewWrap");
+const imagePreview = document.getElementById("imagePreview");
+
+let generator = null;
+let loading = false;
+let talkByItself = false;
 let selectedImage = null;
 
-let talkingByItself = false;
 
-let recognition = null;
+// ===============================
+// BASIC UI
+// ===============================
 
-let conversation = [];
+function setStatus(text) {
+  if (statusText) {
+    statusText.textContent = text;
+  }
+}
 
-/*
-==================================================
-ELEMENTS
-==================================================
-*/
-
-const downloadScreen =
-  document.getElementById("downloadScreen");
-
-const app =
-  document.getElementById("app");
-
-const downloadBrainBtn =
-  document.getElementById("downloadBrainBtn");
-
-const downloadStatus =
-  document.getElementById("downloadStatus");
-
-const progressBar =
-  document.getElementById("progressBar");
-
-const chat =
-  document.getElementById("chat");
-
-const input =
-  document.getElementById("messageInput");
-
-const sendButton =
-  document.getElementById("sendButton");
-
-const micButton =
-  document.getElementById("micButton");
-
-const talkButton =
-  document.getElementById("talkButton");
-
-const imageInput =
-  document.getElementById("imageInput");
-
-const imagePreview =
-  document.getElementById("imagePreview");
-
-const imagePreviewContainer =
-  document.getElementById("imagePreviewContainer");
-
-const removeImage =
-  document.getElementById("removeImage");
-
-const status =
-  document.getElementById("status");
-
-/*
-==================================================
-CHAT
-==================================================
-*/
-
-function addMessage(text, type) {
-
-  const message =
-    document.createElement("div");
+function addMessage(who, text, isUser = false) {
+  const message = document.createElement("div");
 
   message.className =
-    "message " + type;
+    "message " + (isUser ? "user-message" : "pulse-message");
 
-  message.textContent = text;
+  const name = document.createElement("strong");
+  name.textContent = who;
+
+  const body = document.createElement("span");
+  body.textContent = text;
+
+  message.appendChild(name);
+  message.appendChild(body);
 
   chat.appendChild(message);
 
-  chat.scrollTop =
-    chat.scrollHeight;
-
-  return message;
+  chat.scrollTop = chat.scrollHeight;
 }
 
-/*
-==================================================
-VOICE OUTPUT
-==================================================
-*/
 
-function speak(text) {
+// ===============================
+// AI DOWNLOAD / LOADING
+// ===============================
 
-  if (!("speechSynthesis" in window)) {
-    return;
+async function loadAI() {
+
+  if (generator) {
+    return generator;
   }
 
-  speechSynthesis.cancel();
+  if (loading) {
+    return null;
+  }
 
-  const voice =
-    new SpeechSynthesisUtterance(text);
+  loading = true;
 
-  voice.rate = 1;
+  if (downloadButton) {
+    downloadButton.disabled = true;
+  }
 
-  voice.pitch = 1;
+  setStatus("Downloading AI brain...");
 
-  speechSynthesis.speak(voice);
+  try {
+
+    generator = await pipeline(
+      "text2text-generation",
+      MODEL,
+      {
+        progress_callback: (info) => {
+
+          if (typeof info.progress === "number") {
+
+            const percent = Math.max(
+              0,
+              Math.min(
+                100,
+                Math.round(info.progress)
+              )
+            );
+
+            if (progressBar) {
+              progressBar.style.width = percent + "%";
+            }
+
+            if (progressText) {
+              progressText.textContent =
+                `Downloading... ${percent}%`;
+            }
+          }
+        }
+      }
+    );
+
+    if (progressBar) {
+      progressBar.style.width = "100%";
+    }
+
+    if (progressText) {
+      progressText.textContent = "AI brain ready!";
+    }
+
+    if (downloadPanel) {
+      downloadPanel.classList.add("hidden");
+    }
+
+    setStatus("Ready");
+
+    return generator;
+
+  } catch (error) {
+
+    console.error("AI download error:", error);
+
+    generator = null;
+
+    setStatus("Download failed");
+
+    if (progressText) {
+      progressText.textContent =
+        "Download failed — check your internet connection and try again.";
+    }
+
+    if (downloadButton) {
+      downloadButton.disabled = false;
+    }
+
+    return null;
+
+  } finally {
+
+    loading = false;
+  }
 }
 
-/*
-==================================================
-ROBOT COMMANDS
-==================================================
 
-The AI is only allowed to request
-predefined commands.
+// Download button
 
-It cannot execute arbitrary JavaScript.
-*/
+if (downloadButton) {
+  downloadButton.addEventListener(
+    "click",
+    loadAI
+  );
+}
 
-const ROBOT_COMMANDS = [
 
-  "FORWARD",
+// ===============================
+// GENERATE AI RESPONSE
+// ===============================
 
-  "BACKWARD",
+async function generateReply(text) {
 
-  "LEFT",
+  const ai = await loadAI();
 
-  "RIGHT",
+  if (!ai) {
 
-  "STOP"
+    return (
+      "I couldn't load my AI brain yet. " +
+      "Please try downloading it again."
+    );
+  }
 
-];
+  try {
 
-/*
-Send a command to the Raspberry Pi.
+    const result = await ai(
+      text,
+      {
+        max_new_tokens: 80,
+        temperature: 0.7
+      }
+    );
 
-The Pi will later have a tiny server
-that receives these commands.
-*/
+    const reply =
+      result?.[0]?.generated_text?.trim();
+
+    if (reply) {
+      return reply;
+    }
+
+    return "I don't know what to say yet.";
+
+  } catch (error) {
+
+    console.error("AI error:", error);
+
+    return "Something went wrong while I was thinking.";
+  }
+}
+
+
+// ===============================
+// ROBOT COMMAND DETECTION
+// ===============================
+
+function detectMovement(text) {
+
+  const t = text.toLowerCase();
+
+  if (
+    /\bstop\b/.test(t) ||
+    /\bhalt\b/.test(t)
+  ) {
+    return "STOP";
+  }
+
+  if (
+    /\bforward\b/.test(t) ||
+    /\bgo forward\b/.test(t) ||
+    /\bmove forward\b/.test(t)
+  ) {
+    return "FORWARD";
+  }
+
+  if (
+    /\bbackward\b/.test(t) ||
+    /\bbackwards\b/.test(t) ||
+    /\bgo back\b/.test(t) ||
+    /\bmove back\b/.test(t)
+  ) {
+    return "BACKWARD";
+  }
+
+  if (
+    /\bleft\b/.test(t) ||
+    /\bturn left\b/.test(t)
+  ) {
+    return "LEFT";
+  }
+
+  if (
+    /\bright\b/.test(t) ||
+    /\bturn right\b/.test(t)
+  ) {
+    return "RIGHT";
+  }
+
+  return null;
+}
+
+
+// ===============================
+// ROBOT MOVEMENT TIME
+// ===============================
+
+function getDuration(text) {
+
+  const match = text.match(
+    /(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s)\b/i
+  );
+
+  if (!match) {
+    return 1;
+  }
+
+  return Math.min(
+    10,
+    Math.max(
+      0.1,
+      Number(match[1])
+    )
+  );
+}
+
+
+// ===============================
+// SEND COMMAND TO RASPBERRY PI
+// ===============================
 
 async function sendRobotCommand(
   command,
-  duration = 1
+  duration
 ) {
+
+  // If the Raspberry Pi isn't connected yet,
+  // just show the command in the browser console.
 
   if (!ROBOT_URL) {
 
     console.log(
       "Robot command:",
       command,
-      duration
+      "Duration:",
+      duration,
+      "seconds"
     );
 
-    return;
-  }
-
-  if (!ROBOT_COMMANDS.includes(command)) {
     return;
   }
 
@@ -202,8 +322,7 @@ async function sendRobotCommand(
         method: "POST",
 
         headers: {
-          "Content-Type":
-            "application/json"
+          "Content-Type": "application/json"
         },
 
         body: JSON.stringify({
@@ -216,695 +335,302 @@ async function sendRobotCommand(
   } catch (error) {
 
     console.error(
-      "Robot connection error:",
+      "Robot connection failed:",
       error
     );
 
-    status.textContent =
-      "Robot connection failed.";
-  }
-}
-
-/*
-==================================================
-UNDERSTAND MOVEMENT
-==================================================
-*/
-
-function detectMovement(text) {
-
-  const message =
-    text.toLowerCase();
-
-  if (
-    message.includes("stop") ||
-    message.includes("don't move") ||
-    message.includes("dont move")
-  ) {
-
-    return {
-      command: "STOP",
-      duration: 0
-    };
-  }
-
-  if (
-    message.includes("forward") ||
-    message.includes("go forwards") ||
-    message.includes("move ahead")
-  ) {
-
-    return {
-      command: "FORWARD",
-      duration: getDuration(message)
-    };
-  }
-
-  if (
-    message.includes("backward") ||
-    message.includes("backwards") ||
-    message.includes("reverse")
-  ) {
-
-    return {
-      command: "BACKWARD",
-      duration: getDuration(message)
-    };
-  }
-
-  if (
-    message.includes("turn left") ||
-    message.includes("go left")
-  ) {
-
-    return {
-      command: "LEFT",
-      duration: getDuration(message)
-    };
-  }
-
-  if (
-    message.includes("turn right") ||
-    message.includes("go right")
-  ) {
-
-    return {
-      command: "RIGHT",
-      duration: getDuration(message)
-    };
-  }
-
-  return null;
-}
-
-function getDuration(text) {
-
-  const match =
-    text.match(/(\d+(?:\.\d+)?)\s*(second|seconds|sec|secs)/);
-
-  if (match) {
-
-    const seconds =
-      Number(match[1]);
-
-    return Math.min(
-      seconds,
-      10
+    addMessage(
+      "Pulse",
+      "I couldn't connect to the robot."
     );
   }
-
-  return 1;
 }
 
-/*
-==================================================
-AI
-==================================================
-*/
 
-async function generateAnswer(text) {
-
-  if (!ai) {
-
-    return "My AI brain isn't loaded yet.";
-  }
-
-  status.textContent =
-    "Thinking...";
-
-  try {
-
-    const prompt =
-      `You are Pulse, a friendly robot AI assistant.
-
-Answer the user naturally and briefly.
-
-User:
-${text}
-
-Answer:`;
-
-    const result =
-      await ai(
-        prompt,
-        {
-          max_new_tokens: 70,
-          temperature: 0.7
-        }
-      );
-
-    let answer =
-      result?.[0]?.generated_text || "";
-
-    answer =
-      answer
-        .replace(prompt, "")
-        .trim();
-
-    if (!answer) {
-
-      answer =
-        "I'm not sure how to answer that.";
-    }
-
-    return answer;
-
-  } catch (error) {
-
-    console.error(error);
-
-    return "I had trouble thinking about that.";
-  }
-}
-
-/*
-==================================================
-SEND MESSAGE
-==================================================
-*/
+// ===============================
+// SEND MESSAGE
+// ===============================
 
 async function sendMessage() {
 
-  const text =
-    input.value.trim();
+  const text = input.value.trim();
 
-  if (!text && !selectedImage) {
+  if (!text) {
     return;
   }
 
-  if (text) {
-    addMessage(
-      text,
-      "user"
-    );
-  }
-
+  // Clear input immediately
   input.value = "";
 
-  /*
-  Check whether the user is
-  asking the robot to move.
-  */
+  // Show user's message
+  addMessage(
+    "You",
+    text,
+    true
+  );
 
-  if (text) {
+  setStatus("Thinking...");
 
-    const movement =
-      detectMovement(text);
+  if (sendButton) {
+    sendButton.disabled = true;
+  }
 
-    if (movement) {
 
-      await sendRobotCommand(
-        movement.command,
-        movement.duration
-      );
+  // Check if the message is a robot command
 
-      let movementReply;
+  const movement =
+    detectMovement(text);
 
-      if (movement.command === "STOP") {
+  if (movement) {
 
-        movementReply =
-          "Okay, I've stopped.";
+    const duration =
+      getDuration(text);
+
+    await sendRobotCommand(
+      movement,
+      duration
+    );
+
+    addMessage(
+      "Pulse",
+      `Robot command: ${movement} for ${duration} second${duration === 1 ? "" : "s"}.`
+    );
+
+    setStatus("Ready");
+
+    if (sendButton) {
+      sendButton.disabled = false;
+    }
+
+    return;
+  }
+
+
+  // Normal AI response
+
+  const reply =
+    await generateReply(text);
+
+  addMessage(
+    "Pulse",
+    reply
+  );
+
+  speak(reply);
+
+  setStatus("Ready");
+
+  if (sendButton) {
+    sendButton.disabled = false;
+  }
+}
+
+
+// ===============================
+// SEND BUTTON / ENTER KEY
+// ===============================
+
+if (form) {
+
+  form.addEventListener(
+    "submit",
+    (event) => {
+
+      event.preventDefault();
+
+      sendMessage();
+    }
+  );
+}
+
+
+// ===============================
+// MICROPHONE
+// ===============================
+
+if (micButton) {
+
+  micButton.addEventListener(
+    "click",
+    () => {
+
+      const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+
+        addMessage(
+          "Pulse",
+          "Voice input isn't supported by this browser."
+        );
+
+        return;
+      }
+
+      const recognition =
+        new SpeechRecognition();
+
+      recognition.lang = "en-GB";
+
+      recognition.interimResults = false;
+
+      recognition.maxAlternatives = 1;
+
+      micButton.textContent = "⏺️";
+
+      setStatus("Listening...");
+
+
+      recognition.onresult =
+        (event) => {
+
+          const spokenText =
+            event.results[0][0].transcript;
+
+          input.value =
+            spokenText;
+
+          sendMessage();
+        };
+
+
+      recognition.onerror =
+        () => {
+
+          micButton.textContent = "🎤";
+
+          setStatus("Ready");
+        };
+
+
+      recognition.onend =
+        () => {
+
+          micButton.textContent = "🎤";
+
+          setStatus("Ready");
+        };
+
+
+      recognition.start();
+    }
+  );
+}
+
+
+// ===============================
+// TEXT TO SPEECH
+// ===============================
+
+function speak(text) {
+
+  if (
+    !("speechSynthesis" in window)
+  ) {
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+
+  const utterance =
+    new SpeechSynthesisUtterance(text);
+
+  utterance.lang = "en-GB";
+
+  utterance.rate = 1;
+
+  utterance.pitch = 1;
+
+  window.speechSynthesis.speak(
+    utterance
+  );
+}
+
+
+// ===============================
+// TALK BY ITSELF
+// ===============================
+
+if (talkButton) {
+
+  talkButton.addEventListener(
+    "click",
+    () => {
+
+      talkByItself =
+        !talkByItself;
+
+      if (talkByItself) {
+
+        talkButton.textContent =
+          "Stop Talking";
+
+        addMessage(
+          "Pulse",
+          "I'll occasionally talk by myself."
+        );
+
+        spontaneousTalk();
 
       } else {
 
-        movementReply =
-          `Okay — moving ${movement.command.toLowerCase()} for ${movement.duration} second${movement.duration === 1 ? "" : "s"}.`;
+        talkButton.textContent =
+          "Talk by Itself";
+
+        addMessage(
+          "Pulse",
+          "Okay, I'll stay quiet."
+        );
       }
-
-      addMessage(
-        movementReply,
-        "ai"
-      );
-
-      speak(movementReply);
-
-      status.textContent = "";
-
-      selectedImage = null;
-
-      imagePreviewContainer
-        .classList
-        .add("hidden");
-
-      return;
     }
-  }
-
-  if (selectedImage) {
-
-    addMessage(
-      "📷 Image attached",
-      "user"
-    );
-
-    /*
-    The current tiny model is text-only.
-    The image is kept ready for a future
-    vision model.
-    */
-
-    selectedImage = null;
-
-    imagePreviewContainer
-      .classList
-      .add("hidden");
-  }
-
-  const answer =
-    await generateAnswer(text);
-
-  conversation.push({
-    user: text,
-    assistant: answer
-  });
-
-  addMessage(
-    answer,
-    "ai"
-  );
-
-  speak(answer);
-
-  status.textContent = "";
-}
-
-/*
-==================================================
-DOWNLOAD AI
-==================================================
-*/
-
-async function downloadBrain() {
-
-  downloadBrainBtn.disabled = true;
-
-  downloadStatus.textContent =
-    "Downloading AI brain...";
-
-  try {
-
-    ai =
-      await pipeline(
-        "text2text-generation",
-        MODEL,
-        {
-          progress_callback:
-            data => {
-
-              if (
-                typeof data.progress ===
-                "number"
-              ) {
-
-                const percentage =
-                  Math.max(
-                    0,
-                    Math.min(
-                      100,
-                      Math.round(
-                        data.progress
-                      )
-                    )
-                  );
-
-                progressBar.style.width =
-                  percentage + "%";
-
-                downloadStatus.textContent =
-                  `Downloading AI brain... ${percentage}%`;
-              }
-            }
-        }
-      );
-
-    localStorage.setItem(
-      "pulseBrainInstalled",
-      "true"
-    );
-
-    progressBar.style.width =
-      "100%";
-
-    downloadStatus.textContent =
-      "AI brain ready!";
-
-    setTimeout(
-      openPulse,
-      500
-    );
-
-  } catch (error) {
-
-    console.error(error);
-
-    downloadStatus.textContent =
-      "Download failed. Check your internet connection and try again.";
-
-    downloadBrainBtn.disabled =
-      false;
-  }
-}
-
-downloadBrainBtn.addEventListener(
-  "click",
-  downloadBrain
-);
-
-/*
-==================================================
-OPEN PULSE
-==================================================
-*/
-
-function openPulse() {
-
-  downloadScreen
-    .classList
-    .add("hidden");
-
-  app
-    .classList
-    .remove("hidden");
-
-  addMessage(
-    "I'm ready. What do you want to do?",
-    "ai"
   );
 }
 
-/*
-==================================================
-CHECK FOR SAVED AI
-==================================================
-*/
-
-async function loadSavedBrain() {
-
-  if (
-    localStorage.getItem(
-      "pulseBrainInstalled"
-    ) !== "true"
-  ) {
-
-    return;
-  }
-
-  downloadStatus.textContent =
-    "Loading saved AI brain...";
-
-  try {
-
-    ai =
-      await pipeline(
-        "text2text-generation",
-        MODEL,
-        {
-          progress_callback:
-            data => {
-
-              if (
-                typeof data.progress ===
-                "number"
-              ) {
-
-                progressBar.style.width =
-                  Math.round(
-                    data.progress
-                  ) + "%";
-              }
-            }
-        }
-      );
-
-    openPulse();
-
-  } catch (error) {
-
-    console.error(error);
-
-    localStorage.removeItem(
-      "pulseBrainInstalled"
-    );
-
-    downloadBrainBtn.disabled =
-      false;
-
-    downloadStatus.textContent =
-      "Please download the AI brain again.";
-  }
-}
-
-/*
-==================================================
-TEXT BUTTON
-==================================================
-*/
-
-sendButton.addEventListener(
-  "click",
-  sendMessage
-);
-
-input.addEventListener(
-  "keydown",
-  event => {
-
-    if (event.key === "Enter") {
-      sendMessage();
-    }
-
-  }
-);
-
-/*
-==================================================
-IMAGE
-==================================================
-*/
-
-imageInput.addEventListener(
-  "change",
-  event => {
-
-    const file =
-      event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    const reader =
-      new FileReader();
-
-    reader.onload =
-      () => {
-
-        selectedImage =
-          reader.result;
-
-        imagePreview.src =
-          selectedImage;
-
-        imagePreviewContainer
-          .classList
-          .remove("hidden");
-      };
-
-    reader.readAsDataURL(file);
-  }
-);
-
-removeImage.addEventListener(
-  "click",
-  () => {
-
-    selectedImage =
-      null;
-
-    imagePreview.src =
-      "";
-
-    imagePreviewContainer
-      .classList
-      .add("hidden");
-
-    imageInput.value =
-      "";
-  }
-);
-
-/*
-==================================================
-VOICE INPUT
-==================================================
-*/
-
-if (
-  "SpeechRecognition" in window ||
-  "webkitSpeechRecognition" in window
-) {
-
-  const SpeechRecognition =
-    window.SpeechRecognition ||
-    window.webkitSpeechRecognition;
-
-  recognition =
-    new SpeechRecognition();
-
-  recognition.lang =
-    "en-GB";
-
-  recognition.continuous =
-    false;
-
-  recognition.interimResults =
-    false;
-
-  recognition.onstart =
-    () => {
-
-      micButton.textContent =
-        "🔴";
-
-      status.textContent =
-        "Listening...";
-    };
-
-  recognition.onend =
-    () => {
-
-      micButton.textContent =
-        "🎤";
-
-      status.textContent =
-        "";
-    };
-
-  recognition.onresult =
-    event => {
-
-      const text =
-        event.results[0][0]
-          .transcript;
-
-      input.value =
-        text;
-
-      sendMessage();
-    };
-
-  recognition.onerror =
-    error => {
-
-      console.error(error);
-
-      status.textContent =
-        "Microphone error.";
-    };
-}
-
-micButton.addEventListener(
-  "click",
-  () => {
-
-    if (!recognition) {
-
-      status.textContent =
-        "Speech recognition isn't supported here.";
-
-      return;
-    }
-
-    recognition.start();
-  }
-);
-
-/*
-==================================================
-TALK BY ITSELF
-==================================================
-*/
-
-talkButton.addEventListener(
-  "click",
-  () => {
-
-    talkingByItself =
-      !talkingByItself;
-
-    talkButton
-      .classList
-      .toggle(
-        "active",
-        talkingByItself
-      );
-
-    if (talkingByItself) {
-
-      talkButton.textContent =
-        "🛑 Stop Talking";
-
-      addMessage(
-        "I'll talk occasionally by myself.",
-        "ai"
-      );
-
-      speak(
-        "I'll talk occasionally by myself."
-      );
-
-      spontaneousTalk();
-
-    } else {
-
-      talkButton.textContent =
-        "🗣️ Talk by Itself";
-
-      speechSynthesis.cancel();
-    }
-  }
-);
 
 function spontaneousTalk() {
 
-  if (!talkingByItself) {
+  if (!talkByItself) {
     return;
   }
 
-  const thingsToSay = [
+  const thoughts = [
 
-    "I wonder what's around here.",
+    "Hey, I'm still here.",
 
-    "What should we explore next?",
+    "I wonder what we should build next.",
 
-    "I'm still here.",
+    "That was a quiet moment.",
 
-    "I wonder what my camera would see right now.",
+    "I'm ready if you want to talk.",
 
-    "I think we should go exploring.",
+    "I was just thinking about the robot.",
 
-    "This robot thing is pretty cool."
-
+    "What should we make next?"
   ];
 
-  const text =
-    thingsToSay[
+
+  const thought =
+    thoughts[
       Math.floor(
         Math.random() *
-        thingsToSay.length
+        thoughts.length
       )
     ];
 
+
   addMessage(
-    text,
-    "ai"
+    "Pulse",
+    thought
   );
 
-  speak(text);
+  speak(thought);
+
 
   const delay =
-    20000 +
-    Math.random() * 40000;
+    15000 +
+    Math.random() * 30000;
+
 
   setTimeout(
     spontaneousTalk,
@@ -912,10 +638,54 @@ function spontaneousTalk() {
   );
 }
 
-/*
-==================================================
-START
-==================================================
-*/
 
-loadSavedBrain();
+// ===============================
+// IMAGE INPUT
+// ===============================
+
+if (imageInput) {
+
+  imageInput.addEventListener(
+    "change",
+    () => {
+
+      const file =
+        imageInput.files?.[0];
+
+      if (!file) {
+        return;
+      }
+
+      selectedImage =
+        file;
+
+
+      const url =
+        URL.createObjectURL(file);
+
+
+      imagePreview.src =
+        url;
+
+
+      imagePreviewWrap.classList.remove(
+        "hidden"
+      );
+
+
+      addMessage(
+        "Pulse",
+        "I received the picture. This small AI model can preview the image, but it isn't a vision model yet."
+      );
+    }
+  );
+}
+
+
+// ===============================
+// STARTUP
+// ===============================
+
+setStatus("Ready");
+
+console.log("Pulse loaded successfully.");
