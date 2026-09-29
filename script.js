@@ -1,25 +1,20 @@
-// ===============================
-// PULSE AI
-// ===============================
-
-// IMPORTANT:
-// This script is an ES module, so it loads the AI library
-// only after the page itself is working.
-
 import { pipeline, env } from
-"https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2";
+"https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
 
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-const MODEL = "Xenova/LaMini-T5-61M";
+// Small browser-friendly model
+const MODEL =
+    "onnx-community/SmolLM2-135M-ONNX";
 
-let generator = null;
+let ai = null;
 let loading = false;
+let talking = false;
 
 
 // ===============================
-// GET ELEMENTS
+// ELEMENTS
 // ===============================
 
 const downloadButton =
@@ -70,25 +65,17 @@ const imagePreviewWrap =
 // ===============================
 
 function setStatus(text) {
-
     if (status) {
         status.textContent = text;
     }
-
 }
 
 
 // ===============================
-// MESSAGES
+// CHAT MESSAGE
 // ===============================
 
-function addMessage(
-    name,
-    text,
-    user = false
-) {
-
-    if (!chat) return;
+function addMessage(name, text, user = false) {
 
     const message =
         document.createElement("div");
@@ -101,14 +88,12 @@ function addMessage(
     const title =
         document.createElement("strong");
 
-    title.textContent =
-        name;
+    title.textContent = name;
 
     const body =
         document.createElement("span");
 
-    body.textContent =
-        text;
+    body.textContent = text;
 
     message.appendChild(title);
     message.appendChild(body);
@@ -121,20 +106,18 @@ function addMessage(
 
 
 // ===============================
-// DOWNLOAD AI BRAIN
+// DOWNLOAD AI
 // ===============================
 
 async function downloadAI() {
 
-    if (loading) {
-        return;
-    }
+    if (loading) return;
 
-    if (generator) {
+    if (ai) {
 
         addMessage(
             "Pulse",
-            "My AI brain is already downloaded."
+            "My AI brain is already loaded."
         );
 
         return;
@@ -142,65 +125,93 @@ async function downloadAI() {
 
     loading = true;
 
-    downloadButton.disabled =
-        true;
+    downloadButton.disabled = true;
 
     downloadButton.textContent =
-        "Starting download...";
+        "Downloading...";
+
+    progressText.textContent =
+        "Connecting to AI...";
 
     progressBar.style.width =
         "1%";
 
-    progressText.textContent =
-        "Connecting to the AI model...";
-
     setStatus(
-        "Connecting..."
+        "Downloading AI..."
     );
 
     try {
 
         console.log(
-            "Starting AI download..."
+            "Pulse: starting model download"
         );
 
-        generator =
-            await pipeline(
-                "text2text-generation",
-                MODEL,
-                {
 
-                    progress_callback:
-                        function(info) {
+        // Try WebGPU first because it can be
+        // much faster on supported phones.
 
-                            console.log(
-                                "Download progress:",
-                                info
-                            );
+        let device =
+            "wasm";
 
-                            if (
-                                typeof info.progress ===
-                                "number"
-                            ) {
+        if (
+            "gpu" in navigator
+        ) {
+            device =
+                "webgpu";
+        }
 
-                                const percent =
+
+        console.log(
+            "Pulse device:",
+            device
+        );
+
+
+        const options = {
+
+            device: device,
+
+            dtype: "q8",
+
+            progress_callback:
+                function(info) {
+
+                    console.log(
+                        "Model download:",
+                        info
+                    );
+
+                    if (
+                        typeof info.progress ===
+                        "number"
+                    ) {
+
+                        const percent =
+                            Math.max(
+                                0,
+                                Math.min(
+                                    100,
                                     Math.round(
                                         info.progress
-                                    );
+                                    )
+                                )
+                            );
 
-                                progressBar.style.width =
-                                    percent + "%";
+                        progressBar.style.width =
+                            percent + "%";
 
-                                progressText.textContent =
-                                    "Downloading AI brain... " +
-                                    percent +
-                                    "%";
-                            }
-
-                        }
-
+                        progressText.textContent =
+                            `Downloading AI... ${percent}%`;
+                    }
                 }
-            );
+        };
+
+
+        ai = await pipeline(
+            "text-generation",
+            MODEL,
+            options
+        );
 
 
         // SUCCESS
@@ -209,7 +220,7 @@ async function downloadAI() {
             "100%";
 
         progressText.textContent =
-            "AI brain downloaded!";
+            "AI brain ready!";
 
         downloadButton.textContent =
             "AI Brain Ready";
@@ -220,73 +231,66 @@ async function downloadAI() {
 
         addMessage(
             "Pulse",
-            "My AI brain is ready!"
+            "I'm ready! My AI brain has loaded."
         );
+
 
         setTimeout(
             function() {
 
-                downloadPanel.classList.add(
-                    "hidden"
-                );
+                if (downloadPanel) {
+
+                    downloadPanel.classList.add(
+                        "hidden"
+                    );
+                }
 
             },
-            800
+            1000
         );
 
 
     } catch (error) {
 
         console.error(
-            "DOWNLOAD ERROR:",
+            "Pulse AI error:",
             error
         );
 
-        generator =
-            null;
+        ai = null;
 
         downloadButton.disabled =
             false;
 
         downloadButton.textContent =
-            "Download AI Brain";
+            "Try Again";
 
         progressBar.style.width =
             "0%";
 
         progressText.textContent =
-            "Something stopped the download. Check the browser console for the error.";
+            "The AI couldn't load. Trying the basic browser mode next time.";
 
         setStatus(
-            "Download error"
+            "AI failed to load"
         );
 
-    }
+    } finally {
 
-    loading =
-        false;
+        loading = false;
+    }
 }
 
 
 // ===============================
-// BUTTON
+// DOWNLOAD BUTTON
 // ===============================
 
 if (downloadButton) {
 
-    console.log(
-        "Download button found."
-    );
-
     downloadButton.addEventListener(
         "click",
         downloadAI
-    );
-
-} else {
-
-    console.error(
-        "DOWNLOAD BUTTON NOT FOUND!"
     );
 
 }
@@ -298,37 +302,73 @@ if (downloadButton) {
 
 async function generateReply(text) {
 
-    if (!generator) {
+    if (!ai) {
 
         await downloadAI();
     }
 
-    if (!generator) {
+    if (!ai) {
 
-        return "My AI brain isn't ready yet.";
+        return "My AI brain isn't loaded yet.";
     }
+
 
     try {
 
+        const prompt =
+            `You are Pulse, a friendly AI assistant.
+Answer the user's message clearly and briefly.
+
+User: ${text}
+Pulse:`;
+
+
         const result =
-            await generator(
-                text,
+            await ai(
+                prompt,
                 {
                     max_new_tokens: 80,
-                    temperature: 0.7
+
+                    temperature: 0.7,
+
+                    do_sample: true
                 }
             );
 
-        return (
-            result?.[0]?.generated_text?.trim()
-            ||
-            "I'm not sure what to say."
-        );
+
+        let reply =
+            result?.[0]?.generated_text || "";
+
+
+        // Remove the prompt from the response
+        if (
+            reply.startsWith(prompt)
+        ) {
+
+            reply =
+                reply.substring(
+                    prompt.length
+                );
+        }
+
+
+        reply =
+            reply.trim();
+
+
+        if (!reply) {
+
+            return "I'm not sure what to say.";
+        }
+
+
+        return reply;
+
 
     } catch (error) {
 
         console.error(
-            "AI RESPONSE ERROR:",
+            "Generation error:",
             error
         );
 
@@ -346,9 +386,7 @@ async function sendMessage() {
     const text =
         input.value.trim();
 
-    if (!text) {
-        return;
-    }
+    if (!text) return;
 
     input.value = "";
 
@@ -365,8 +403,10 @@ async function sendMessage() {
     sendButton.disabled =
         true;
 
+
     const reply =
         await generateReply(text);
+
 
     addMessage(
         "Pulse",
@@ -397,7 +437,6 @@ if (form) {
             event.preventDefault();
 
             sendMessage();
-
         }
     );
 }
@@ -410,26 +449,29 @@ if (form) {
 function speak(text) {
 
     if (
-        !window.speechSynthesis
+        !("speechSynthesis" in window)
     ) {
         return;
     }
 
     window.speechSynthesis.cancel();
 
-    const speech =
+    const voice =
         new SpeechSynthesisUtterance(
             text
         );
 
-    speech.lang =
+    voice.lang =
         "en-GB";
 
-    speech.rate =
+    voice.rate =
+        1;
+
+    voice.pitch =
         1;
 
     window.speechSynthesis.speak(
-        speech
+        voice
     );
 }
 
@@ -452,11 +494,12 @@ if (micButton) {
 
                 addMessage(
                     "Pulse",
-                    "Your browser doesn't support voice input."
+                    "Voice input isn't supported here."
                 );
 
                 return;
             }
+
 
             const recognition =
                 new Recognition();
@@ -467,12 +510,14 @@ if (micButton) {
             recognition.interimResults =
                 false;
 
+
             micButton.textContent =
                 "🔴";
 
             setStatus(
                 "Listening..."
             );
+
 
             recognition.onresult =
                 function(event) {
@@ -483,6 +528,7 @@ if (micButton) {
 
                     sendMessage();
                 };
+
 
             recognition.onend =
                 function() {
@@ -495,6 +541,7 @@ if (micButton) {
                     );
                 };
 
+
             recognition.onerror =
                 function() {
 
@@ -506,6 +553,7 @@ if (micButton) {
                     );
                 };
 
+
             recognition.start();
 
         }
@@ -516,9 +564,6 @@ if (micButton) {
 // ===============================
 // TALK BY ITSELF
 // ===============================
-
-let talking =
-    false;
 
 if (talkButton) {
 
@@ -536,7 +581,7 @@ if (talkButton) {
 
                 addMessage(
                     "Pulse",
-                    "I'll talk by myself sometimes."
+                    "I'll occasionally talk by myself."
                 );
 
                 spontaneousTalk();
@@ -548,10 +593,9 @@ if (talkButton) {
 
                 addMessage(
                     "Pulse",
-                    "Okay, I'll be quiet."
+                    "Okay, I'll stay quiet."
                 );
             }
-
         }
     );
 }
@@ -559,11 +603,9 @@ if (talkButton) {
 
 function spontaneousTalk() {
 
-    if (!talking) {
-        return;
-    }
+    if (!talking) return;
 
-    const things = [
+    const thoughts = [
 
         "Hey, I'm still here.",
 
@@ -571,26 +613,27 @@ function spontaneousTalk() {
 
         "I was thinking about the robot.",
 
-        "That was quiet.",
-
-        "I'm ready to talk."
+        "I'm ready if you want to talk."
 
     ];
 
-    const text =
-        things[
+
+    const thought =
+        thoughts[
             Math.floor(
                 Math.random() *
-                things.length
+                thoughts.length
             )
         ];
 
+
     addMessage(
         "Pulse",
-        text
+        thought
     );
 
-    speak(text);
+    speak(thought);
+
 
     setTimeout(
         spontaneousTalk,
@@ -613,12 +656,12 @@ if (imageInput) {
             const file =
                 imageInput.files?.[0];
 
-            if (!file) {
-                return;
-            }
+            if (!file) return;
 
             imagePreview.src =
-                URL.createObjectURL(file);
+                URL.createObjectURL(
+                    file
+                );
 
             imagePreviewWrap.classList.remove(
                 "hidden"
@@ -626,7 +669,7 @@ if (imageInput) {
 
             addMessage(
                 "Pulse",
-                "I received your picture. This version can display it, but the small AI model doesn't understand images yet."
+                "I received the picture. The current model can display images but doesn't understand them yet."
             );
         }
     );
@@ -634,13 +677,11 @@ if (imageInput) {
 
 
 // ===============================
-// STARTUP
+// START
 // ===============================
 
-setStatus(
-    "Ready"
-);
+setStatus("Ready");
 
 console.log(
-    "PULSE SCRIPT LOADED SUCCESSFULLY"
+    "PULSE LOADED"
 );
